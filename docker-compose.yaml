@@ -3,7 +3,7 @@ caddy:
   container_name: caddy
   volumes:
     - $HOME/caddystack/www:/srv
-    - $HOME/caddystack/caddy/Caddyfile:/etc/Caddyfile
+    - $HOME/caddystack/caddy:/etc
   restart: unless-stopped
   ports:
     - 80:80
