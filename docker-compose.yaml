@@ -1,40 +1,81 @@
 version: '2'
+
+volumes:
+   mariadb_data:
+    driver: local
+  mediawiki_data:
+    driver: local
+  database_data:
+    driver: local
+
 services:
-  db:
-    image: mysql
-    container_name: mysql
-    volumes:
-      - "./.data:/var/lib/mysql"
-    restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: wordpress
-      MYSQL_DATABASE: wordpress
-      MYSQL_USER: wordpress
-      MYSQL_PASSWORD: wordpress
-  wordpress:
-    depends_on:
-      - db
-    image: wordpress:fpm
-    container_name: wordpress
-    links:
-      - db
-    restart: always
-    environment:
-      WORDPRESS_DB_HOST: db:3306
-      WORDPRESS_DB_PASSWORD: wordpress
-    volumes:
-    - "/usr/src/wordpress"
-    - "./php.ini:/usr/local/etc/php/conf.d/custom.ini"
   server:
-    image: abiosoft/caddy
     container_name: caddy
-    restart: always
-    ports:
-    - "80:80"
-    - "443:443"
+    image: abiosoft/caddy:php
     links:
-    - wordpress
+      - wordpress
+      - lychee
+    ports:
+      - 80:80
+      - 443:443
     volumes:
-    - "./Caddyfile:/etc/Caddyfile"
-    volumes_from:
-    - wordpress
+      - $HOME/.caddy/etc:/etc \
+      - $HOME/.caddy/certs:/root/.caddy \
+    restart: always
+  db:
+    container_name: mysql
+    image: mysql
+    enviroment:
+      MYSQL_ROOT_PASSWORD: Trump
+    ports:
+      - 3306:3306
+    volumes:
+      - "$HOME/.mysql/var:/var/lib/mysql"
+    restart: always
+  wordpress:
+    container_name: technical_forays
+    image: wordpress
+    ports:
+      - 8008:80
+    links:
+      - db
+    enviroment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+    restart: always
+  lychee:
+    container_name: lychee
+    image: linuxserver/lychee
+    volumes:
+      - $HOME/.lychee/config:/config
+      - $HOME/.lychee/pictures:/pictures
+    ports:
+      - 8007:80
+    links:
+      - db
+  mariadb:
+    image: 'bitnami/mariadb:latest'
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+      - MARIADB_USER=bn_mediawiki
+      - MARIADB_DATABASE=bitnami_mediawiki
+    volumes:
+      - 'mariadb_data:/bitnami'
+  mediawiki:
+    image: 'bitnami/mediawiki:latest'
+    labels:
+      kompose.service.type: nodeport
+    environment:
+      - MARIADB_HOST=mariadb
+      - MARIADB_PORT_NUMBER=3306
+      - MEDIAWIKI_DATABASE_USER=bn_mediawiki
+      - MEDIAWIKI_DATABASE_NAME=bitnami_mediawiki
+      - ALLOW_EMPTY_PASSWORD=yes
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - 'mediawiki_data:/bitnami'
+    depends_on:
+      - mariadb
