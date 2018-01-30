@@ -1,11 +1,40 @@
-caddy:
-  image: abiosoft/caddy:php
-  container_name: caddy
-  volumes:
-    - $HOME/caddystack/www:/srv
-    - $HOME/caddystack/caddy:/etc
-  restart: unless-stopped
-  ports:
-    - 80:80
-    - 443:443
-    - 2015:2015
+version: '2'
+services:
+  db:
+    image: mysql
+    container_name: mysql
+    volumes:
+      - "./.data:/var/lib/mysql"
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: wordpress
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: wordpress
+  wordpress:
+    depends_on:
+      - db
+    image: wordpress:fpm
+    container_name: wordpress
+    links:
+      - db
+    restart: always
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_PASSWORD: wordpress
+    volumes:
+    - "/usr/src/wordpress"
+    - "./php.ini:/usr/local/etc/php/conf.d/custom.ini"
+  server:
+    image: abiosoft/caddy
+    container_name: caddy
+    restart: always
+    ports:
+    - "80:80"
+    - "443:443"
+    links:
+    - wordpress
+    volumes:
+    - "./Caddyfile:/etc/Caddyfile"
+    volumes_from:
+    - wordpress
